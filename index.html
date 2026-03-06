@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kedai Shankara - Fixed Mobile v10</title>
+    <title>Kedai Shankara - Fixed Mobile v12 Pro Payment</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
@@ -14,11 +14,10 @@
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             -webkit-tap-highlight-color: transparent;
-            overflow-x: hidden; /* Lock geser kanan kiri */
+            overflow-x: hidden;
             width: 100%;
         }
 
-        /* Biar gak bisa geser ke samping sama sekali */
         .container {
             max-width: 100vw;
             overflow-x: hidden;
@@ -26,7 +25,7 @@
 
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #blue-500; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
         
         .animate-pop { animation: pop 0.25s ease-out; }
         @keyframes pop {
@@ -34,7 +33,6 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Biar input gak otomatis zoom di iPhone */
         input[type="number"], input[type="datetime-local"] {
             font-size: 16px !important;
         }
@@ -131,16 +129,16 @@
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">Rp</span>
                         <input type="number" v-model.number="payment" 
                                class="w-full pl-12 pr-4 py-4 bg-slate-100 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-black text-lg outline-none transition-all" 
-                               placeholder="Bayar Tunai...">
+                               placeholder="Isi Tunai (Jika Cash)">
                     </div>
 
-                    <div v-if="change >= 0" class="p-4 bg-green-500 rounded-2xl text-white text-center shadow-lg shadow-green-100">
+                    <div v-if="change >= 0 && payment > 0" class="p-4 bg-green-500 rounded-2xl text-white text-center shadow-lg shadow-green-100">
                         <p class="text-[9px] font-black uppercase opacity-80 mb-1">Kembalian</p>
                         <p class="text-xl font-black italic tracking-tight">Rp {{ change.toLocaleString() }}</p>
                     </div>
 
-                    <button @click="checkout" 
-                            :disabled="cart.length === 0 || payment < totalPrice"
+                    <button @click="showPaymentModal = true" 
+                            :disabled="cart.length === 0"
                             class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-md shadow-lg shadow-blue-100 disabled:bg-slate-200 disabled:shadow-none transition-all active:scale-[0.98]">
                         PROSES TRANSAKSI
                     </button>
@@ -171,12 +169,62 @@
             <button @click="showModal = false" class="w-full mt-4 py-3 text-slate-400 font-black uppercase text-[10px] tracking-[0.3em]">Batal</button>
         </div>
     </div>
+
+    <div v-if="showPaymentModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-sm text-center animate-pop shadow-2xl">
+            <h3 class="font-black text-slate-800 text-xl mb-2 uppercase tracking-tight">Pilih Pembayaran</h3>
+            <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-8">Total: Rp {{ totalPrice.toLocaleString() }}</p>
+            
+            <button @click="processCash" class="w-full bg-green-500 text-white py-4 rounded-2xl font-black mb-3 shadow-lg shadow-green-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <span>💵</span> TUNAI (CASH)
+            </button>
+            <button @click="openCashless" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <span>📱</span> CASHLESS (QRIS/E-WALLET)
+            </button>
+            
+            <button @click="showPaymentModal = false" class="mt-6 text-slate-400 font-black uppercase text-[10px] tracking-widest">Batal</button>
+        </div>
+    </div>
+
+    <div v-if="showCashlessModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
+        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-sm text-center animate-pop shadow-2xl">
+            <h3 class="font-black text-slate-800 text-xl mb-6 uppercase tracking-tight">Pilih Aplikasi</h3>
+            
+            <div class="space-y-3">
+                <button @click="selectApp('Dana')" class="w-full border-2 border-slate-100 text-blue-500 py-4 rounded-2xl font-black uppercase tracking-widest hover:border-blue-500 hover:bg-blue-50 active:scale-[0.98] transition-all">Dana</button>
+                <button @click="selectApp('GoPay')" class="w-full border-2 border-slate-100 text-cyan-500 py-4 rounded-2xl font-black uppercase tracking-widest hover:border-cyan-500 hover:bg-cyan-50 active:scale-[0.98] transition-all">GoPay</button>
+                <button @click="selectApp('OVO')" class="w-full border-2 border-slate-100 text-violet-600 py-4 rounded-2xl font-black uppercase tracking-widest hover:border-violet-500 hover:bg-violet-50 active:scale-[0.98] transition-all">OVO</button>
+            </div>
+            
+            <button @click="showCashlessModal = false; showPaymentModal = true" class="mt-6 text-slate-400 font-black uppercase text-[10px] tracking-widest">Kembali</button>
+        </div>
+    </div>
+
+    <div v-if="qrMethod" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[130] p-4">
+        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-sm text-center animate-pop shadow-2xl">
+            <h3 class="font-black text-slate-800 text-lg mb-2 uppercase tracking-tight">Scan QR {{ qrMethod }}</h3>
+            <p class="text-slate-500 text-xs font-bold mb-6">Total Tagihan: Rp {{ totalPrice.toLocaleString() }}</p>
+            
+            <div class="w-48 h-48 bg-slate-100 mx-auto mb-6 flex flex-col items-center justify-center rounded-2xl border-4 border-dashed border-slate-300">
+                <span class="text-4xl mb-2">📱</span>
+                <span class="text-[10px] font-black text-slate-400 uppercase">Taruh QR Code<br>Disini Nanti</span>
+            </div>
+            
+            <button @click="finishCashless" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black shadow-lg shadow-slate-300 active:scale-[0.98] transition-all uppercase tracking-wide">
+                Konfirmasi Pembayaran
+            </button>
+            
+            <button @click="qrMethod = null; showCashlessModal = true" class="mt-6 text-slate-400 font-black uppercase text-[10px] tracking-widest">Batal / Kembali</button>
+        </div>
+    </div>
+
 </div>
 
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
     createApp({
         setup() {
+            // DATABASE MENU SEMENTARA
             const products = ref([
                 { id: 1, name: 'Es Boba', emoji: '🥤', variants: [
                     { name: 'Alpukat', price: 5000 }, { name: 'Coklat', price: 5000 },
@@ -194,19 +242,26 @@
                 ]},
                 { id: 8, name: 'Corndog', price: 5000, emoji: '🌭' },
                 { id: 9, name: 'Seblak', price: 5000, emoji: '🥘' },
-                { id: 10, name: 'Bakso Kebakaran', price: 5000, emoji: '🔥' },
+                { id: 10, name: 'Bakso Bakar', price: 5000, emoji: '🔥' },
                 { id: 11, name: 'Sosis Bakar', emoji: '🥓', variants: [
                     { name: 'Jumbo', price: 7000 }, { name: 'Kecil', price: 5000 }
                 ]}
             ]);
 
+            // STATE APLIKASI
             const cart = ref([]);
             const payment = ref(0);
-            const showModal = ref(false);
-            const activeProduct = ref(null);
             const currentTime = ref(new Date());
             const manualDateTime = ref("");
+            
+            // STATE MODAL
+            const showModal = ref(false);
+            const activeProduct = ref(null);
+            const showPaymentModal = ref(false);
+            const showCashlessModal = ref(false);
+            const qrMethod = ref(null);
 
+            // WAKTU & JAM
             const formattedTimeOnly = computed(() => {
                 return currentTime.value.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             });
@@ -219,6 +274,8 @@
             });
 
             const applyManualTime = () => { if (manualDateTime.value) currentTime.value = new Date(manualDateTime.value); };
+
+            // LOGIKA KERANJANG & MENU
             const openVariantModal = (p) => { if (p.variants) { activeProduct.value = p; showModal.value = true; } else { addToCart(p); }};
             const addToCart = (p) => {
                 const ex = cart.value.find(i => i.id === p.id && !i.selectedVariant);
@@ -232,17 +289,52 @@
             const increaseQty = (i) => cart.value[i].qty++;
             const decreaseQty = (i) => { if (cart.value[i].qty > 1) cart.value[i].qty--; else cart.value.splice(i, 1); };
             const removeFromCart = (i) => cart.value.splice(i, 1);
+            
+            // HITUNG-HITUNGAN DUIT
             const totalPrice = computed(() => cart.value.reduce((s, i) => s + (i.price * i.qty), 0));
             const change = computed(() => (payment.value < totalPrice.value) ? -1 : payment.value - totalPrice.value);
-            const checkout = () => {
-                alert(`🧾 KEDAI SHANKARA\n------------------------\nTotal: Rp ${totalPrice.value.toLocaleString()}\nTunai: Rp ${payment.value.toLocaleString()}\nKembali: Rp ${change.value.toLocaleString()}\n\nSuwun cuy!`);
-                cart.value = []; payment.value = 0;
+
+            // LOGIKA PEMBAYARAN BARU (V12)
+            const processCash = () => {
+                if (payment.value < totalPrice.value) {
+                    alert("⚠️ Uang tunai kurang cuy! Cek lagi nominalnya.");
+                    return;
+                }
+                alert(`✅ Pembayaran Tunai Berhasil!\n\nTotal: Rp ${totalPrice.value.toLocaleString()}\nTunai: Rp ${payment.value.toLocaleString()}\nKembali: Rp ${change.value.toLocaleString()}\n\nSuwun cuy!`);
+                resetApp();
             };
 
-            return { products, cart, formattedTimeOnly, manualDateTime, applyManualTime, showModal, activeProduct, openVariantModal, addWithVariant, addToCart, removeFromCart, increaseQty, decreaseQty, totalPrice, payment, change, checkout };
+            const openCashless = () => {
+                showPaymentModal.value = false;
+                showCashlessModal.value = true;
+            };
+
+            const selectApp = (app) => {
+                showCashlessModal.value = false;
+                qrMethod.value = app;
+            };
+
+            const finishCashless = () => {
+                alert(`✅ Pembayaran Cashless via ${qrMethod.value} Berhasil!\nTotal: Rp ${totalPrice.value.toLocaleString()}\n\nSuwun cuy!`);
+                resetApp();
+            };
+
+            const resetApp = () => {
+                cart.value = [];
+                payment.value = 0;
+                showPaymentModal.value = false;
+                showCashlessModal.value = false;
+                qrMethod.value = null;
+            };
+
+            return { 
+                products, cart, formattedTimeOnly, manualDateTime, applyManualTime, 
+                showModal, activeProduct, openVariantModal, addWithVariant, addToCart, 
+                removeFromCart, increaseQty, decreaseQty, totalPrice, payment, change,
+                showPaymentModal, showCashlessModal, qrMethod, processCash, openCashless, selectApp, finishCashless
+            };
         }
     }).mount('#app');
 </script>
 </body>
-
 </html>
